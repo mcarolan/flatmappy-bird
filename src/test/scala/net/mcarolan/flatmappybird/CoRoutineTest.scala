@@ -1,12 +1,9 @@
 package net.mcarolan.flatmappybird
 
-import java.time.{LocalDate, LocalTime}
-
 import org.scalatest.FunSuite
 import org.scalatest.Matchers._
 
 import scala.annotation.tailrec
-import scala.util.Random
 
 class CoRoutineTest extends FunSuite {
 
@@ -120,19 +117,14 @@ class CoRoutineTest extends FunSuite {
   }
 
   test("withPrevious continuation") {
-    val inputs = (1 to 100000).toList
-
-    println(LocalTime.now().toString)
+    val inputs = (1 to 1000).toList
 
     val (nextCo, firstResults) = evalListWithLast(CoRoutine.withPrevious(0), inputs)
-    firstResults.last shouldBe (99999, 100000)
+    firstResults.last shouldBe (999, 1000)
 
-    println(LocalTime.now().toString)
     val nextInputs = List(5)
 
-    eval(nextCo, nextInputs) shouldBe Some((100000, 5))
-    println(LocalTime.now().toString)
+    eval(nextCo, nextInputs) shouldBe Some((1000, 5))
   }
-
 
 }
