@@ -17,6 +17,13 @@ case class CoRoutine[A, B](run: A => (B, CoRoutine[A, B])) {
       }
     }
 
+  def >>>[D](other: CoRoutine[B, D]): CoRoutine[A, D] =
+    CoRoutine { a =>
+      val (b, next) = run(a)
+      val (d, nextOther) = other.run(b)
+      (d, next >>> nextOther)
+    }
+
 }
 
 object CoRoutine {
@@ -46,5 +53,25 @@ object CoRoutine {
 
     step(init)
   }
+
+  def derivate[T : Numeric](implicit numeric: Numeric[T]): CoRoutine[T, T] =
+    derivate(numeric.zero, numeric.minus _)
+
+  def derivate[T, V](zero: T, minus: (T, T) => V): CoRoutine[T, V] = {
+    val subtract: CoRoutine[(T, T), V] = arr { case (a, b) => minus(b, a) }
+    withPrevious(zero) >>> subtract
+  }
+
+  def restartWhen[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] =
+    CoRoutine { in =>
+      val (res, nextNext) = next.run(in)
+
+      if (test(res)) {
+        (zero, restartWhen(first, first, zero, test))
+      }
+      else {
+        (res, restartWhen(first, nextNext, zero, test))
+      }
+    }
 
 }

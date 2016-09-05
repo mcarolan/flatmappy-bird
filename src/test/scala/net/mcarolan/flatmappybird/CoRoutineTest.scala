@@ -1,9 +1,13 @@
 package net.mcarolan.flatmappybird
 
+import java.time.LocalTime
+import java.util.concurrent.TimeUnit
+
 import org.scalatest.FunSuite
 import org.scalatest.Matchers._
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 class CoRoutineTest extends FunSuite {
 
@@ -127,4 +131,57 @@ class CoRoutineTest extends FunSuite {
     eval(nextCo, nextInputs) shouldBe Some((1000, 5))
   }
 
+  test("compose with >>>") {
+    val intToString: CoRoutine[Int, String] = CoRoutine.arr(_.toString)
+    val stringtoSize: CoRoutine[String, Int] = CoRoutine.arr(_.size)
+
+    val charWidth: CoRoutine[Int, Int] = intToString >>> stringtoSize
+
+    evalList(charWidth, List(1, 100, 1000)) shouldBe List(1, 3, 4)
+  }
+
+  test("compose with >>> and state tracking") {
+    val intToString: CoRoutine[Int, String] = CoRoutine.arr(_.toString)
+    val stringtoSize: CoRoutine[String, Int] = CoRoutine.arr(_.size)
+
+    val charWidth: CoRoutine[Int, Int] = intToString >>> stringtoSize
+
+    val charWidthWithPrevious: CoRoutine[Int, (Int, Int)] =
+      charWidth >>> CoRoutine.withPrevious(-1)
+
+    evalList(charWidthWithPrevious, List(1, 100, 1000)) shouldBe List((-1, 1), (1, 3), (3, 4))
+  }
+
+  test("derivate works") {
+    evalList(CoRoutine.derivate[Int], List(1, 2, 3, 4)) shouldBe List(1, 1, 1, 1)
+    evalList(CoRoutine.derivate[Int], List(1, 20, 31, 47)) shouldBe List(1, 19, 11, 16)
+  }
+
+  test("Time between calls") {
+    def minus(a: LocalTime, b: LocalTime): FiniteDuration =
+      FiniteDuration(a.toNanoOfDay - b.toNanoOfDay, TimeUnit.NANOSECONDS)
+
+    val now: LocalTime = LocalTime.now()
+    val timeBetweenCalls: CoRoutine[LocalTime, FiniteDuration] = CoRoutine.derivate(now, minus _)
+
+    val input = List(now, now.plusNanos(5000), now.plusSeconds(10), now.plusMinutes(2))
+    val expectedResult: List[FiniteDuration] = List(Duration.Zero, Duration(5000, TimeUnit.NANOSECONDS), Duration(9999995000L, TimeUnit.NANOSECONDS), Duration(110, TimeUnit.SECONDS))
+
+    evalList(timeBetweenCalls, input) shouldBe expectedResult
+  }
+
+  test("restartWhen should work") {
+    val initialPosition = 10
+    val inputs = List(2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
+    val expectedOutputsNoWrap = List(8, 6, 4, 2, 0, -2, -4, -6, -8, -10)
+
+    val movePosition: CoRoutine[Int, Int] = CoRoutine.scan((acc, curr) => acc - curr, initialPosition)
+    evalList(movePosition, inputs) shouldBe expectedOutputsNoWrap
+
+
+    val expectedOutputsWrap = List(8, 6, 4, 2, 10, 8, 6, 4, 2, 10)
+    val movePositionWrap: CoRoutine[Int, Int] = CoRoutine.restartWhen[Int](movePosition, movePosition, initialPosition, _ == 0)
+
+    evalList(movePositionWrap, inputs) shouldBe expectedOutputsWrap
+  }
 }
