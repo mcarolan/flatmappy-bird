@@ -54,24 +54,36 @@ object CoRoutine {
     step(init)
   }
 
+  def integrate[T: Numeric](implicit numeric: Numeric[T]): CoRoutine[T, T] =
+    scan(numeric.plus, numeric.zero)
+
+  def integrate[T: Numeric](zero: T)(implicit numeric: Numeric[T]): CoRoutine[T, T] =
+    scan(numeric.plus, zero)
+
   def derivate[T : Numeric](implicit numeric: Numeric[T]): CoRoutine[T, T] =
     derivate(numeric.zero, numeric.minus _)
+
+  def derivate[T: Numeric](zero: T)(implicit numeric: Numeric[T]): CoRoutine[T, T] =
+    derivate(zero, numeric.minus _)
 
   def derivate[T, V](zero: T, minus: (T, T) => V): CoRoutine[T, V] = {
     val subtract: CoRoutine[(T, T), V] = arr { case (a, b) => minus(b, a) }
     withPrevious(zero) >>> subtract
   }
 
-  def restartWhen[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] =
-    CoRoutine { in =>
-      val (res, nextNext) = next.run(in)
+  def restartWhen[T](co: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] = {
+    def inner[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] =
+      CoRoutine { in =>
+        val (res, nextNext) = next.run(in)
 
-      if (test(res)) {
-        (zero, restartWhen(first, first, zero, test))
+        if (test(res)) {
+          (zero, inner(first, first, zero, test))
+        }
+        else {
+          (res, inner(first, nextNext, zero, test))
+        }
       }
-      else {
-        (res, restartWhen(first, nextNext, zero, test))
-      }
-    }
+    inner(co, co, zero, test)
+  }
 
 }

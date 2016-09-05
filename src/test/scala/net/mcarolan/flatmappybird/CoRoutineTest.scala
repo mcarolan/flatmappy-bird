@@ -157,6 +157,11 @@ class CoRoutineTest extends FunSuite {
     evalList(CoRoutine.derivate[Int], List(1, 20, 31, 47)) shouldBe List(1, 19, 11, 16)
   }
 
+  test("integrate works") {
+    evalList(CoRoutine.integrate[Double], List(1.0, -0.5, 2.2)) shouldBe List(1.0, 0.5, 2.7)
+    evalList(CoRoutine.integrate[Double](1.0), List(1.0, -0.5, 2.2)) shouldBe List(2.0, 1.5, 3.7)
+  }
+
   test("Time between calls") {
     def minus(a: LocalTime, b: LocalTime): FiniteDuration =
       FiniteDuration(a.toNanoOfDay - b.toNanoOfDay, TimeUnit.NANOSECONDS)
@@ -180,7 +185,7 @@ class CoRoutineTest extends FunSuite {
 
 
     val expectedOutputsWrap = List(8, 6, 4, 2, 10, 8, 6, 4, 2, 10)
-    val movePositionWrap: CoRoutine[Int, Int] = CoRoutine.restartWhen[Int](movePosition, movePosition, initialPosition, _ == 0)
+    val movePositionWrap: CoRoutine[Int, Int] = CoRoutine.restartWhen[Int](movePosition, initialPosition, _ == 0)
 
     evalList(movePositionWrap, inputs) shouldBe expectedOutputsWrap
   }
