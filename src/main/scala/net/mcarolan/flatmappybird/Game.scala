@@ -2,14 +2,14 @@ package net.mcarolan.flatmappybird
 
 import java.util.concurrent.TimeUnit
 
-import net.mcarolan.flatmappybird.UI.Rectangle
-
 import scala.concurrent.duration.FiniteDuration
 
 case class PipeX(value: Double)
 case class PipeGap(value: Double)
 
 case class Pipe(currentX: PipeX, currentGap: PipeGap)
+
+case class ScreenDimensions(width: Double, height: Double)
 
 object Pipe {
   val deltaX: CoRoutine[FiniteDuration, Double] =
@@ -28,9 +28,9 @@ object SystemTime {
   def now(): SystemTime = SystemTime(System.currentTimeMillis())
 }
 
-case class Game(screenWidth: Double, screenHeight: Double) {
+case class Game(screenDimensions: ScreenDimensions) {
 
-  val initialPipeX: Double = screenWidth + 100
+  val initialPipeX: Double = screenDimensions.width + 100
   val pipeWraparoundAfter: Double = -50
 
   val timeSinceLastFrame: CoRoutine[SystemTime, FiniteDuration] = {
@@ -52,8 +52,4 @@ case class Game(screenWidth: Double, screenHeight: Double) {
       in
     }
 
-  def toRectangles(p: Pipe): Set[Rectangle] =
-    Set(
-      Rectangle("green", p.currentX.value, 0.0, Pipe.width, p.currentGap.value),
-      Rectangle("green", p.currentX.value, p.currentGap.value + Pipe.gapSize, Pipe.width, screenHeight - Pipe.gapSize - p.currentGap.value))
 }

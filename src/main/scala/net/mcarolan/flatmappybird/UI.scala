@@ -10,19 +10,24 @@ object UI {
 
   case class Rectangle(colour: String, x: Double, y: Double, width: Double, height: Double)
 
-  def doFrame(co: CoRoutine[SystemTime, Pipe], game: Game, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
+  def toRectangles(screenDimensions: ScreenDimensions, p: Pipe): Set[Rectangle] =
+    Set(
+      Rectangle("green", p.currentX.value, 0.0, Pipe.width, p.currentGap.value),
+      Rectangle("green", p.currentX.value, p.currentGap.value + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - p.currentGap.value))
+
+  def doFrame(co: CoRoutine[SystemTime, Pipe], screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
     clear()
 
     val (pipe, next) = co.run(SystemTime.now())
 
-    val rectangles = game.toRectangles(pipe)
+    val rectangles = toRectangles(screenDimensions, pipe)
 
     rectangles.foreach { rectangle =>
       graphicsContext.fillStyle = rectangle.colour
       graphicsContext.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
     }
 
-    dom.setTimeout(() => doFrame(next, game, graphicsContext, clear), 2)
+    dom.setTimeout(() => doFrame(next, screenDimensions, graphicsContext, clear), 2)
   }
 
   @JSExport
@@ -38,9 +43,10 @@ object UI {
       graphicsContext.fillRect(0, 0, canvas.width, canvas.height)
     }
 
-    val game = Game(dom.window.innerWidth, dom.window.innerHeight)
+    val screenDimensions = ScreenDimensions(dom.window.innerWidth, dom.window.innerHeight)
+    val game = Game(screenDimensions)
 
-    doFrame(game.pipe, game, graphicsContext, clear)
+    doFrame(game.pipe, screenDimensions, graphicsContext, clear)
   }
 
 
