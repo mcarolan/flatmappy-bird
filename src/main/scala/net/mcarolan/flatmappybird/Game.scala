@@ -2,26 +2,66 @@ package net.mcarolan.flatmappybird
 
 import java.util.concurrent.TimeUnit
 
+
 import scala.concurrent.duration.FiniteDuration
 
-case class Pipe(currentX: Double, currentGap: Double)
+case class Rectangle(x: Double, y: Double, width: Double, height: Double) {
+  def left = x
+  def right = x + width
+  def top = y
+  def bottom = y + height
 
-case class Player(currentY : Double)
+  def intersectsWith(other: Rectangle): Boolean =
+    !(other.left > right ||
+      other.right < left ||
+      other.top > bottom ||
+      other.bottom < top)
+}
+
+case class Pipe(currentX: Double, currentGap: Double) {
+  def toRectangles(screenDimensions: ScreenDimensions): Set[Rectangle] =
+    Set(
+      Rectangle(currentX, 0.0, Pipe.width, currentGap),
+      Rectangle(currentX, currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - currentGap)
+    )
+}
+
+sealed trait PlayerState
+case object Falling extends PlayerState
+case object Jumping extends PlayerState
+
+case class Player(currentY : Double) {
+  def toRectangle: Rectangle = Rectangle(Player.x, currentY, Player.size, Player.size)
+}
+
+case class GameState(player: Player, pipe: Pipe, isGameOver: Boolean)
 
 case class ScreenDimensions(width: Double, height: Double)
 
 object Player {
   val initialY: Double = 50
-  val deltaY: CoRoutine[FiniteDuration, Double] =
-    CoRoutine.arr(duration => duration.toMillis / 4.5)
+
+  val deltaY: CoRoutine[(PlayerState, FiniteDuration), Double] =
+    CoRoutine.arr { case (state, duration) =>
+      val divisor =
+        state match {
+          case Falling => 4.5
+          case Jumping => -4.5
+        }
+
+      duration.toMillis / divisor
+    }
+
   val size: Double = 40.0
+
+  val x: Double = 50.0
 }
 
 object Pipe {
   val deltaX: CoRoutine[FiniteDuration, Double] =
     CoRoutine.arr(duration => duration.toMillis / -5.0)
   val width: Double = 50
-  val gapSize: Double = 100
+  val gapSize: Double = 150
   val initialGap: Double = 100
 }
 
@@ -56,16 +96,35 @@ case class Game(screenDimensions: ScreenDimensions) {
     timeSinceLastFrame >>>
     Pipe.deltaX >>>
     CoRoutine.arr(deltaX => (deltaX, Pipe.initialGap)) >>>
-    CoRoutine.restartWhen(moveX, moveGap, _._1 < pipeWraparoundAfter) >>>
+    CoRoutine.restartWhen(moveX, moveGap, { case (currentX, _) => currentX < pipeWraparoundAfter}) >>>
     CoRoutine.arr((Pipe.apply _).tupled)
 
-  val player: CoRoutine[SystemTime, Player] =
-    timeSinceLastFrame >>>
+  val playerJumping: CoRoutine[Set[KeyCode], PlayerState] =
+    CoRoutine.arr { keys =>
+      if (keys contains KeyCode.space)
+        Jumping
+      else
+        Falling
+    }
+
+  val player: CoRoutine[(Set[KeyCode], SystemTime), Player] =
+    CoRoutine.first(playerJumping) >>>
+    CoRoutine.second(timeSinceLastFrame) >>>
     Player.deltaY >>>
-    CoRoutine.integrate[Double](Player.initialY) >>>
+    CoRoutine.integrate(Player.initialY) >>>
     CoRoutine.arr(Player.apply)
 
-  val game: CoRoutine[SystemTime, (Pipe, Player)] =
-    pipe.zipWith(player)
+  val buildGameState: CoRoutine[(Player, Pipe), GameState] =
+    CoRoutine.arr { case (player, pipe) =>
+      val playerOffScreen: Boolean = player.currentY < 0 || player.currentY > (screenDimensions.height - Player.size)
+      val playerPipeCollide: Boolean =
+        pipe.toRectangles(screenDimensions).exists(_.intersectsWith(player.toRectangle))
+
+      GameState(player, pipe, playerOffScreen || playerPipeCollide)
+    }
+
+  val game: CoRoutine[(Set[KeyCode], SystemTime), GameState] =
+    player.zipWith(CoRoutine.dropFirst(pipe)) >>>
+    buildGameState
 
 }

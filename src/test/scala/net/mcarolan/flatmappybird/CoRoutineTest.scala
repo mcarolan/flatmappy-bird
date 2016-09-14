@@ -206,6 +206,13 @@ class CoRoutineTest extends FunSuite {
     evalList(onlyActOnSecond, input) shouldBe expectedOutput
   }
 
+  test("dropFirst") {
+    val co: CoRoutine[Int, String] = CoRoutine.arr(_.toString)
+    val example: CoRoutine[(String, Int), String] = CoRoutine.dropFirst(co)
+
+    eval(example, List(("Hello", 1))) shouldBe Some("1")
+  }
+
   test("restartWhen that will allow an RNG") {
     val initialPosition = (10, 1)
     val inputs = List((-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1))

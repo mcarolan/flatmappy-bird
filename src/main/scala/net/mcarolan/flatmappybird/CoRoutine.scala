@@ -48,6 +48,9 @@ object CoRoutine {
   def second[A, B, C](co: CoRoutine[A, B]): CoRoutine[(C, A), (C, B)] =
     id.zip(co)
 
+  def dropFirst[A, B, C](co: CoRoutine[(A), B]): CoRoutine[(C, A), B] =
+    CoRoutine.arr[(C, A), A](_._2) >>> co
+
   def scan[A, B](f: (A, B) => A, init: A): CoRoutine[B, A] = {
     def step(a: A)(b: B): (A, CoRoutine[B, A]) = {
       val next = f(a, b)

@@ -2,33 +2,37 @@ package net.mcarolan.flatmappybird
 
 import org.scalajs.dom
 import org.scalajs.dom._
+import org.scalajs.dom.raw.HTMLDocument
 
 import scala.scalajs.js.annotation.JSExport
 
 @JSExport
 object UI {
 
-  case class Rectangle(colour: String, x: Double, y: Double, width: Double, height: Double)
+  case class Colour(value: String)
 
-  def toRectangles(screenDimensions: ScreenDimensions, pipe: Pipe, player: Player): Set[Rectangle] =
-    Set(
-      Rectangle("green", pipe.currentX, 0.0, Pipe.width, pipe.currentGap),
-      Rectangle("red", 50.0, player.currentY, Player.size, Player.size),
-      Rectangle("green", pipe.currentX, pipe.currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - pipe.currentGap))
+  def toRectangles(screenDimensions: ScreenDimensions, player: Player, pipe: Pipe): Map[Rectangle, Colour] =
+    pipe.toRectangles(screenDimensions).map(_ -> Colour("green")) + (player.toRectangle -> Colour("red")) toMap
 
-  def doFrame(co: CoRoutine[SystemTime, (Pipe, Player)], screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
+  def doFrame(co: CoRoutine[(Set[KeyCode], SystemTime), GameState], keyboardListener: KeyboardListener, screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
     clear()
 
-    val ((pipe, player), next) = co.run(SystemTime.now())
+    val (state, next) = co.run((keyboardListener.pressedKeyCodes, SystemTime.now()))
 
-    val rectangles = toRectangles(screenDimensions, pipe, player)
+    if (!state.isGameOver) {
+      val rectangles = toRectangles(screenDimensions, state.player, state.pipe)
 
-    rectangles.foreach { rectangle =>
-      graphicsContext.fillStyle = rectangle.colour
-      graphicsContext.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+      rectangles.foreach { case (rectangle, colour) =>
+        graphicsContext.fillStyle = colour.value
+        graphicsContext.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+      }
+
+      dom.setTimeout(() => doFrame(next, keyboardListener, screenDimensions, graphicsContext, clear), 2)
     }
-
-    dom.setTimeout(() => doFrame(next, screenDimensions, graphicsContext, clear), 2)
+    else {
+      graphicsContext.fillStyle = "red"
+      graphicsContext.fillRect(0, 0, screenDimensions.width, screenDimensions.height)
+    }
   }
 
   @JSExport
@@ -47,7 +51,9 @@ object UI {
     val screenDimensions = ScreenDimensions(dom.window.innerWidth, dom.window.innerHeight)
     val game = Game(screenDimensions)
 
-    doFrame(game.game, screenDimensions, graphicsContext, clear)
+    val keyboardListener = KeyboardListener(dom.document)
+
+    doFrame(game.game, keyboardListener, screenDimensions, graphicsContext, clear)
   }
 
 
