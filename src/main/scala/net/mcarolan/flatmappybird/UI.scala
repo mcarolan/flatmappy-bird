@@ -10,17 +10,18 @@ object UI {
 
   case class Rectangle(colour: String, x: Double, y: Double, width: Double, height: Double)
 
-  def toRectangles(screenDimensions: ScreenDimensions, p: Pipe): Set[Rectangle] =
+  def toRectangles(screenDimensions: ScreenDimensions, pipe: Pipe, player: Player): Set[Rectangle] =
     Set(
-      Rectangle("green", p.currentX, 0.0, Pipe.width, p.currentGap),
-      Rectangle("green", p.currentX, p.currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - p.currentGap))
+      Rectangle("green", pipe.currentX, 0.0, Pipe.width, pipe.currentGap),
+      Rectangle("red", 50.0, player.currentY, Player.size, Player.size),
+      Rectangle("green", pipe.currentX, pipe.currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - pipe.currentGap))
 
-  def doFrame(co: CoRoutine[SystemTime, Pipe], screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
+  def doFrame(co: CoRoutine[SystemTime, (Pipe, Player)], screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
     clear()
 
-    val (pipe, next) = co.run(SystemTime.now())
+    val ((pipe, player), next) = co.run(SystemTime.now())
 
-    val rectangles = toRectangles(screenDimensions, pipe)
+    val rectangles = toRectangles(screenDimensions, pipe, player)
 
     rectangles.foreach { rectangle =>
       graphicsContext.fillStyle = rectangle.colour
@@ -46,7 +47,7 @@ object UI {
     val screenDimensions = ScreenDimensions(dom.window.innerWidth, dom.window.innerHeight)
     val game = Game(screenDimensions)
 
-    doFrame(game.pipe, screenDimensions, graphicsContext, clear)
+    doFrame(game.game, screenDimensions, graphicsContext, clear)
   }
 
 

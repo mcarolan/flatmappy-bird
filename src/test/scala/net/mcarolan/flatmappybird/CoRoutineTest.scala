@@ -115,6 +115,17 @@ class CoRoutineTest extends FunSuite {
     eval(truesAndLastEven, input) shouldBe Some((3, "4"))
   }
 
+  test("zipWith") {
+    val inputs = List(1, 2, 3, 4)
+
+    val coA: CoRoutine[Int, Int] = CoRoutine.arr(_ * 2)
+    val coB: CoRoutine[Int, String] = CoRoutine.arr(_.toString)
+
+    val resCo: CoRoutine[Int, (Int, String)] = coA.zipWith(coB)
+
+    evalList(resCo, inputs) shouldBe List((2, "1"), (4, "2"), (6, "3"), (8, "4"))
+  }
+
   test("withPrevious") {
     val inputs = (1 to 3).toList
     evalList(CoRoutine.withPrevious(0), inputs) shouldBe List((0, 1), (1, 2), (2, 3))

@@ -17,6 +17,13 @@ case class CoRoutine[A, B](run: A => (B, CoRoutine[A, B])) {
       }
     }
 
+  def zipWith[D](otherCo: CoRoutine[A, D]): CoRoutine[A, (B, D)] =
+    CoRoutine { in =>
+      val (resMe, nextMe) = run(in)
+      val (resOther, nextOther) = otherCo.run(in)
+      ((resMe, resOther), nextMe.zipWith(nextOther))
+    }
+
   def >>>[D](other: CoRoutine[B, D]): CoRoutine[A, D] =
     CoRoutine { a =>
       val (b, next) = run(a)

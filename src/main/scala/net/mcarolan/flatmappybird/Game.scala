@@ -6,7 +6,16 @@ import scala.concurrent.duration.FiniteDuration
 
 case class Pipe(currentX: Double, currentGap: Double)
 
+case class Player(currentY : Double)
+
 case class ScreenDimensions(width: Double, height: Double)
+
+object Player {
+  val initialY: Double = 50
+  val deltaY: CoRoutine[FiniteDuration, Double] =
+    CoRoutine.arr(duration => duration.toMillis / 4.5)
+  val size: Double = 40.0
+}
 
 object Pipe {
   val deltaX: CoRoutine[FiniteDuration, Double] =
@@ -49,5 +58,14 @@ case class Game(screenDimensions: ScreenDimensions) {
     CoRoutine.arr(deltaX => (deltaX, Pipe.initialGap)) >>>
     CoRoutine.restartWhen(moveX, moveGap, _._1 < pipeWraparoundAfter) >>>
     CoRoutine.arr((Pipe.apply _).tupled)
+
+  val player: CoRoutine[SystemTime, Player] =
+    timeSinceLastFrame >>>
+    Player.deltaY >>>
+    CoRoutine.integrate[Double](Player.initialY) >>>
+    CoRoutine.arr(Player.apply)
+
+  val game: CoRoutine[SystemTime, (Pipe, Player)] =
+    pipe.zipWith(player)
 
 }
