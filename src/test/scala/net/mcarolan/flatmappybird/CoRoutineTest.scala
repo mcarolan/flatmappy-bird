@@ -195,24 +195,6 @@ class CoRoutineTest extends FunSuite {
     evalList(onlyActOnSecond, input) shouldBe expectedOutput
   }
 
-
-  ignore("restartWhen should work") {
-    val initialPosition = 10
-    val inputs = List(-2, -2, -2, -2, -2, -2, -2, -2, -2, -2)
-    val expectedOutputsNoWrap = List(8, 6, 4, 2, 0, -2, -4, -6, -8, -10)
-
-    val movePosition: CoRoutine[Int, Int] = CoRoutine.integrate(initialPosition)
-    evalList(movePosition, inputs) shouldBe expectedOutputsNoWrap
-
-
-    val expectedOutputsWrap = List(8, 6, 4, 2, 10, 8, 6, 4, 2, 10)
-    val movePositionWrap: CoRoutine[Int, Int] =
-      CoRoutine.restartWhen(movePosition, CoRoutine.const(initialPosition), _ == 0)
-
-    evalList(movePositionWrap, inputs) shouldBe expectedOutputsWrap
-  }
-
-
   test("restartWhen that will allow an RNG") {
     val initialPosition = (10, 1)
     val inputs = List((-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1), (-2, 1))

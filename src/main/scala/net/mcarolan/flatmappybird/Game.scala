@@ -4,10 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.FiniteDuration
 
-case class PipeX(value: Double)
-case class PipeGap(value: Double)
-
-case class Pipe(currentX: PipeX, currentGap: PipeGap)
+case class Pipe(currentX: Double, currentGap: Double)
 
 case class ScreenDimensions(width: Double, height: Double)
 
@@ -16,7 +13,7 @@ object Pipe {
     CoRoutine.arr(duration => duration.toMillis / -5.0)
   val width: Double = 50
   val gapSize: Double = 100
-  val initialGap: PipeGap = PipeGap(100)
+  val initialGap: Double = 100
 }
 
 case class SystemTime(value: Long) {
@@ -40,10 +37,17 @@ case class Game(screenDimensions: ScreenDimensions) {
     CoRoutine.derivate(SystemTime.now(), timeBetween _)
   }
 
+  val moveGap: CoRoutine[(Double, Double), (Double, Double)] =
+    CoRoutine.second(CoRoutine.arr(currentGap => (currentGap + 250) % screenDimensions.height))
+
+  val moveX: CoRoutine[(Double, Double), (Double, Double)] =
+    CoRoutine.first(CoRoutine.integrate[Double](initialPipeX))
+
   val pipe: CoRoutine[SystemTime, Pipe] =
     timeSinceLastFrame >>>
     Pipe.deltaX >>>
-    CoRoutine.restartWhen(CoRoutine.integrate[Double](initialPipeX), CoRoutine.const(initialPipeX), _ < pipeWraparoundAfter) >>>
-    CoRoutine.arr(x => Pipe(PipeX(x), Pipe.initialGap))
+    CoRoutine.arr(deltaX => (deltaX, Pipe.initialGap)) >>>
+    CoRoutine.restartWhen(moveX, moveGap, _._1 < pipeWraparoundAfter) >>>
+    CoRoutine.arr((Pipe.apply _).tupled)
 
 }

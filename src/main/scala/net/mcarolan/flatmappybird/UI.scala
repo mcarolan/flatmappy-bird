@@ -12,8 +12,8 @@ object UI {
 
   def toRectangles(screenDimensions: ScreenDimensions, p: Pipe): Set[Rectangle] =
     Set(
-      Rectangle("green", p.currentX.value, 0.0, Pipe.width, p.currentGap.value),
-      Rectangle("green", p.currentX.value, p.currentGap.value + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - p.currentGap.value))
+      Rectangle("green", p.currentX, 0.0, Pipe.width, p.currentGap),
+      Rectangle("green", p.currentX, p.currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - p.currentGap))
 
   def doFrame(co: CoRoutine[SystemTime, Pipe], screenDimensions: ScreenDimensions, graphicsContext : CanvasRenderingContext2D, clear: () => Unit): Unit = {
     clear()
