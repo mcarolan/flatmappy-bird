@@ -28,8 +28,18 @@ case class CoRoutine[A, B](run: A => (B, CoRoutine[A, B])) {
 
 object CoRoutine {
 
+  def id[A]: CoRoutine[A, A] = arr(identity)
+
+  def const[A, B](value: B): CoRoutine[A, B] = arr { _ => value }
+
   def arr[Input, Output](f: Input => Output): CoRoutine[Input, Output] =
     CoRoutine { input => (f(input), arr(f)) }
+
+  def first[A, B, C](co: CoRoutine[A, B]): CoRoutine[(A, C), (B, C)] =
+    co.zip(id)
+
+  def second[A, B, C](co: CoRoutine[A, B]): CoRoutine[(C, A), (C, B)] =
+    id.zip(co)
 
   def scan[A, B](f: (A, B) => A, init: A): CoRoutine[B, A] = {
     def step(a: A)(b: B): (A, CoRoutine[B, A]) = {
@@ -71,13 +81,20 @@ object CoRoutine {
     withPrevious(zero) >>> subtract
   }
 
-  def restartWhen[T](co: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] = {
-    def inner[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: T, test: T => Boolean): CoRoutine[T, T] =
+  def debug[A]: CoRoutine[A, A] =
+    CoRoutine.arr { in =>
+      println(s"in: $in")
+      in
+    }
+
+  def restartWhen[T](co: CoRoutine[T, T], zero: CoRoutine[T, T], test: T => Boolean): CoRoutine[T, T] = {
+    def inner[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: CoRoutine[T, T], test: T => Boolean): CoRoutine[T, T] =
       CoRoutine { in =>
         val (res, nextNext) = next.run(in)
 
         if (test(res)) {
-          (zero, inner(first, first, zero, test))
+          val (resZero, resZeroNext) = (first >>> zero).run(in)
+          (resZero, inner(first >>> zero, resZeroNext, zero, test))
         }
         else {
           (res, inner(first, nextNext, zero, test))

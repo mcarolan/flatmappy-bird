@@ -43,13 +43,7 @@ case class Game(screenDimensions: ScreenDimensions) {
   val pipe: CoRoutine[SystemTime, Pipe] =
     timeSinceLastFrame >>>
     Pipe.deltaX >>>
-    CoRoutine.restartWhen(CoRoutine.integrate[Double](initialPipeX), initialPipeX, _ < pipeWraparoundAfter) >>>
+    CoRoutine.restartWhen(CoRoutine.integrate[Double](initialPipeX), CoRoutine.const(initialPipeX), _ < pipeWraparoundAfter) >>>
     CoRoutine.arr(x => Pipe(PipeX(x), Pipe.initialGap))
-
-  def debug[A]: CoRoutine[A, A] =
-    CoRoutine.arr { in =>
-      println(s"in: $in")
-      in
-    }
 
 }
