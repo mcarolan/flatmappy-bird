@@ -19,10 +19,14 @@ case class Rectangle(x: Double, y: Double, width: Double, height: Double) {
 }
 
 case class Pipe(currentX: Double, currentGap: Double) {
+
+  val topRectangle = Rectangle(currentX, 0.0, Pipe.width, currentGap)
+  def bottomRectangle(screenDimensions: ScreenDimensions) = Rectangle(currentX, currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - currentGap)
+
   def toRectangles(screenDimensions: ScreenDimensions): Set[Rectangle] =
     Set(
-      Rectangle(currentX, 0.0, Pipe.width, currentGap),
-      Rectangle(currentX, currentGap + Pipe.gapSize, Pipe.width, screenDimensions.height - Pipe.gapSize - currentGap)
+      topRectangle,
+      bottomRectangle(screenDimensions)
     )
 }
 
@@ -31,7 +35,7 @@ case object Falling extends PlayerState
 case object Jumping extends PlayerState
 
 case class Player(currentY : Double) {
-  def toRectangle: Rectangle = Rectangle(Player.x, currentY, Player.size, Player.size)
+  def toRectangle: Rectangle = Rectangle(Player.x, currentY, Player.width, Player.height)
 }
 
 case class GameState(player: Player, pipe: Pipe, isGameOver: Boolean)
@@ -52,7 +56,8 @@ object Player {
       duration.toMillis / divisor
     }
 
-  val size: Double = 40.0
+  val width: Double = 59
+  val height: Double = 48
 
   val x: Double = 50.0
 }
@@ -116,7 +121,7 @@ case class Game(screenDimensions: ScreenDimensions) {
 
   val buildGameState: CoRoutine[(Player, Pipe), GameState] =
     CoRoutine.arr { case (player, pipe) =>
-      val playerOffScreen: Boolean = player.currentY < 0 || player.currentY > (screenDimensions.height - Player.size)
+      val playerOffScreen: Boolean = player.currentY < 0 || player.currentY > (screenDimensions.height - Player.height)
       val playerPipeCollide: Boolean =
         pipe.toRectangles(screenDimensions).exists(_.intersectsWith(player.toRectangle))
 
