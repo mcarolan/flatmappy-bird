@@ -91,9 +91,9 @@ object CoRoutine {
     withPrevious(zero) >>> subtract
   }
 
-  def debug[A]: CoRoutine[A, A] =
+  def debug[A](hint: String): CoRoutine[A, A] =
     CoRoutine.arr { in =>
-      println(s"in: $in")
+      println(s"$hint: $in")
       in
     }
 

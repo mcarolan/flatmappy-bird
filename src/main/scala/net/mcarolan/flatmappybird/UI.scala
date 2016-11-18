@@ -33,6 +33,7 @@ object UI {
 
   case class Colour(value: String)
 
+
   def toRectangles(screenDimensions: ScreenDimensions, player: Player, pipe: Pipe): List[(Rectangle, Image)] = {
     val pipeBottom = Rectangle(pipe.currentX, pipe.currentGap + Pipe.gapSize, Pipe.width, 80)
     val pipeTop = Rectangle(pipe.currentX, pipe.currentGap - 80, Pipe.width, 80)
@@ -56,6 +57,7 @@ object UI {
     if (!state.isGameOver) {
       val rectangles = toRectangles(screenDimensions, state.player, state.pipe)
 
+      def offset(rect: (Rectangle, Image)): (Rectangle, Image) = (rect._1.copy(x = rect._1.x + 50, y = rect._1.y + 50), rect._2)
       rectangles.foreach { case (rectangle, image) =>
           draw(graphicsContext, image, rectangle)
       }
@@ -79,13 +81,17 @@ object UI {
     def clear() = {
       graphicsContext.fillStyle = "white"
       graphicsContext.fillRect(0, 0, canvas.width, canvas.height)
+//      graphicsContext.fillStyle = "red"
+//      graphicsContext.fillRect(0, 0, 50, canvas.height)
+//      graphicsContext.fillRect(0, 0, canvas.width, 50)
+//      graphicsContext.fillRect(canvas.width - 50, 0, 50, canvas.height)
+//      graphicsContext.fillRect(0, canvas.height - 50, canvas.width, 50)
     }
 
     val screenDimensions = ScreenDimensions(dom.window.innerWidth, dom.window.innerHeight)
     val game = Game(screenDimensions)
 
     val keyboardListener = KeyboardListener(dom.document)
-
     doFrame(game.game, keyboardListener, screenDimensions, graphicsContext, clear)
   }
 
