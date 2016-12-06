@@ -2,7 +2,7 @@ package net.mcarolan.flatmappybird
 
 case class CoRoutine[A, B](run: A => (B, CoRoutine[A, B])) {
 
-  def map[D](f: B => D): CoRoutine[A, D] =
+  def map[C](f: B => C): CoRoutine[A, C] =
     CoRoutine { input =>
       val (o, co) = run(input)
       (f(o), co.map(f))
@@ -90,12 +90,6 @@ object CoRoutine {
     val subtract: CoRoutine[(T, T), V] = arr { case (a, b) => minus(b, a) }
     withPrevious(zero) >>> subtract
   }
-
-  def debug[A](hint: String): CoRoutine[A, A] =
-    CoRoutine.arr { in =>
-      println(s"$hint: $in")
-      in
-    }
 
   def restartWhen[T](co: CoRoutine[T, T], zero: CoRoutine[T, T], test: T => Boolean): CoRoutine[T, T] = {
     def inner[T](first: CoRoutine[T, T], next: CoRoutine[T, T], zero: CoRoutine[T, T], test: T => Boolean): CoRoutine[T, T] =
